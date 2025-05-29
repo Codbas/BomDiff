@@ -10,10 +10,10 @@ bom1_item_col = ""
 bom2_qty_col = ""
 bom2_item_col = ""
 
-bom1_filename = "B.5.csv"
-bom2_filename = "B.5.0.1.csv"
+bom1_filename = "../test/B.5.csv"
+bom2_filename = "../test/B.5.0.1.csv"
 
-# readcsv of first BOM
+# read_csv of first BOM
 try:
     bom1 = pd.read_csv(bom1_filename)
 except FileNotFoundError:
@@ -26,7 +26,7 @@ except pd.errors.ParserError:
     print(f"Error: '{bom1_filename}' contains malformed data")
     exit()
 
-# readcsv of second BOM
+# read_csv of second BOM
 try:
     bom1 = pd.read_csv(bom2_filename)
 except FileNotFoundError:
