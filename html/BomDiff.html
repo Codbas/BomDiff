@@ -3,8 +3,161 @@
 <head>
     <meta charset="UTF-8">
     <title>Bom Diff</title>
+    <script defer>
+    "use strict";
+    window.addEventListener("load", ()=> {
+        const dropContainer1 = document.getElementById("dropContainer1");
+        const dropContainer2 = document.getElementById("dropContainer2");
+
+        dropContainer1.addEventListener("dragenter", handleDragEnter);
+        dropContainer1.addEventListener("dragleave", handleDragLeave);
+        dropContainer1.addEventListener("drop", dropHandler);
+        dropContainer1.addEventListener("dragover", handleDragOver)
+        dropContainer2.addEventListener("dragenter", handleDragEnter);
+        dropContainer2.addEventListener("dragleave", handleDragLeave);
+        dropContainer2.addEventListener("drop", dropHandler);
+        dropContainer2.addEventListener("dragover", handleDragOver)
+    });
+
+
+    const dragCounters = new Map();
+
+    function dropHandler(event) {
+        event.preventDefault();
+
+        const container = event.currentTarget;
+        dragCounters.set(container, 0); // Reset
+        container.classList.remove("drag-over");
+
+        if (event.dataTransfer.items) {
+            [...event.dataTransfer.items].forEach(item => {
+                if (item.kind === "file") {
+                    const file = item.getAsFile();
+                    console.log("Dropped file:", file.name);
+                }
+            });
+        } else {
+            [...event.dataTransfer.files].forEach(file => {
+                console.log("Dropped file:", file.name);
+            });
+        }
+    }
+
+
+    function handleDragEnter(event) {
+        event.preventDefault();
+
+        const container = event.currentTarget;
+        const count = dragCounters.get(container) || 0;
+        dragCounters.set(container, count + 1);
+
+        if (count === 0) {
+            console.log("Entered container:", container.id);
+            container.classList.add("drag-over");
+        }
+    }
+
+    function handleDragLeave(event) {
+        event.preventDefault();
+
+        const container = event.currentTarget;
+        const count = dragCounters.get(container) || 0;
+
+        if (count <= 1) {
+            dragCounters.set(container, 0);
+            console.log("Left container:", container.id);
+            container.classList.remove("drag-over");
+        } else {
+            dragCounters.set(container, count - 1);
+        }
+    }
+        function handleDragOver(event) {
+            event.preventDefault(); // Required to allow drop
+        }
+
+        function csvToJSON(csv) {
+            let lines = csv.split("\n");
+
+        }
+    </script>
+    <style>
+        body {
+            font-family: Helvetica, Arial, serif;
+        }
+
+        #upload-container {
+            border: 1px solid green;
+            margin-top: 300px;
+            margin-left: auto;
+            margin-right: auto;
+            width: 500px;
+            height: 100px;
+        }
+
+        .drag-over > label {
+            transition: opacity 0.3s;
+            opacity: 0;
+        }
+        .drag-over {
+            background: #ccc;
+        }
+        .drag-over > p {
+            transition: 0.3s;
+            transform: translateY(-12px);
+        }
+        p , label {
+            transition: 0.3s;
+        }
+
+        .upload-wrapper {
+            margin: 5px;
+            border: 1px solid blue;
+            width: 150px;
+        }
+
+        #upload-wrapper-1 {
+            float: left;
+        }
+        #upload-wrapper-2 {
+            float: right;
+        }
+
+        .drop-container {
+            transition: 1s;
+            margin: 5px;
+            text-align: center;
+            border: 1px solid red;
+        }
+
+        label {
+            background: #bbb;
+            line-height: 25px;
+            display: inline-block;
+            border-radius: 4px;
+            height: 25px;
+            width: 100px;
+        }
+        label:hover{
+            background: #ddd;
+        }
+    </style>
 </head>
 <body>
-
+<div id="upload-container">
+    <div class="upload-wrapper" id="upload-wrapper-1">
+        <div id="dropContainer1" class="drop-container">
+            <label for="file1">Browse</label>
+            <input type="file" style="display:none;" id="file1" name="file1">
+            <p>Drag & Drop</p>
+        </div>
+    </div>
+    <div class="upload-wrapper" id="upload-wrapper-2">
+        <div id="dropContainer2" class="drop-container">
+            <label for="file2">Browse</label>
+            <input type="file" style="display:none;" id="file2" name="file2">
+            <p>Drag & Drop</p>
+        </div>
+    </div>
+</div>
 </body>
 </html>
