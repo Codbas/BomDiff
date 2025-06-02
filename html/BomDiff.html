@@ -3,43 +3,117 @@
 <head>
     <meta charset="UTF-8">
     <title>Bom Diff</title>
-    <script defer>
+    <script>
     "use strict";
-    window.addEventListener("load", ()=> {
-        const dropContainer1 = document.getElementById("dropContainer1");
-        const dropContainer2 = document.getElementById("dropContainer2");
+    let file1 = null;
+    let file2 = null;
 
-        dropContainer1.addEventListener("dragenter", handleDragEnter);
-        dropContainer1.addEventListener("dragleave", handleDragLeave);
-        dropContainer1.addEventListener("drop", dropHandler);
-        dropContainer1.addEventListener("dragover", handleDragOver)
-        dropContainer2.addEventListener("dragenter", handleDragEnter);
-        dropContainer2.addEventListener("dragleave", handleDragLeave);
-        dropContainer2.addEventListener("drop", dropHandler);
-        dropContainer2.addEventListener("dragover", handleDragOver)
+    window.addEventListener("load", ()=> {
+        const dropContainers = document.getElementsByClassName("drop-container");
+        const removeFileButtons = document.getElementsByClassName("remove-file");
+        const uploadInputs = document.getElementsByTagName("input");
+        const submitButton = document.getElementById("getDiffButton");
+
+        for (let elem of removeFileButtons) {
+            elem.addEventListener("click", removeFile);
+        }
+
+        for (let elem of dropContainers) {
+            elem.addEventListener("dragenter", handleDragEnter);
+            elem.addEventListener("dragleave", handleDragLeave);
+            elem.addEventListener("drop", dropHandler);
+            elem.addEventListener("dragover", handleDragOver);
+        }
+
+        for (let elem of uploadInputs) {
+            elem.addEventListener("change", handleFileUpload);
+        }
+
+        submitButton.addEventListener("click", compareBoms);
+
+        document.body.addEventListener("dragover", handleDragOver);
+        document.body.addEventListener("drop", (event) => {
+            event.preventDefault();
+        });
     });
 
 
     const dragCounters = new Map();
 
+
+    function compareBoms(event) {
+        if (event.target.classList[0] === "disabled") {
+            console.log("button inactive");
+            return;
+        }
+
+        console.log("comparing boms");
+    }
+
+    function removeFile(event) {
+        const container = event.currentTarget.parentElement;
+        const submitButton = document.getElementById("getDiffButton");
+        container.classList.remove("dropped");
+        container.getElementsByTagName("p")[0].innerText = "Drag & Drop";
+
+        if (container.id === "dropContainer1") {
+            file1 = null
+            console.log(file1);
+        }
+        else {
+            file2 = null
+            console.log(file2);
+        }
+        submitButton.classList.add("disabled");
+    }
+
+    function handleFileUpload(event) {
+        const container = event.currentTarget.parentElement;
+        const submitButton = document.getElementById("getDiffButton");
+
+        const file = event.target.files[0];
+        container.classList.add("dropped");
+        container.getElementsByTagName("p")[0].innerText = file.name;
+
+        if (container.id === "dropContainer1") {
+            file1 = file;
+            console.log(file);
+        }
+        else {
+            file2 = file;
+            console.log(file);
+        }
+
+        if (file1 !== null && file2 !== null) {
+            submitButton.classList.remove("disabled");
+        }
+    }
+
     function dropHandler(event) {
         event.preventDefault();
 
         const container = event.currentTarget;
-        dragCounters.set(container, 0); // Reset
+        const submitButton = document.getElementById("getDiffButton");
+        
+        dragCounters.set(container, 0); 
         container.classList.remove("drag-over");
 
-        if (event.dataTransfer.items) {
-            [...event.dataTransfer.items].forEach(item => {
-                if (item.kind === "file") {
-                    const file = item.getAsFile();
-                    console.log("Dropped file:", file.name);
-                }
-            });
-        } else {
-            [...event.dataTransfer.files].forEach(file => {
-                console.log("Dropped file:", file.name);
-            });
+        const file = event.dataTransfer.items[0].getAsFile();
+
+        container.classList.add("dropped");
+        container.getElementsByTagName("p")[0].innerText = file.name;
+
+        if (container.id === "dropContainer1") {
+            file1 = file;
+            console.log(file);
+        }
+        else {
+            file2 = file;
+            console.log(file);
+        }
+
+        if (file1 !== null && file2 !== null) {
+            submitButton.classList.remove("disabled");
         }
     }
 
@@ -70,66 +144,73 @@
         } else {
             dragCounters.set(container, count - 1);
         }
-    }
+        }
+
         function handleDragOver(event) {
-            event.preventDefault(); // Required to allow drop
+            event.preventDefault(); 
         }
 
         function csvToJSON(csv) {
             let lines = csv.split("\n");
-
         }
+
     </script>
     <style>
-        body {
+        html {
+            height: 100%;
+        } body {
             font-family: Helvetica, Arial, serif;
+            margin: 0;
+            min-height: 100%;
         }
-
-        #upload-container {
-            border: 1px solid green;
-            margin-top: 300px;
-            margin-left: auto;
-            margin-right: auto;
-            width: 500px;
+        #instructions {
+            margin-top: 0px;
+            line-height: 200px;
+            text-align: center;
             height: 100px;
         }
 
-        .drag-over > label {
-            transition: opacity 0.3s;
+        #upload-container {
+            position: relative;
+            margin-top: 50px;
+            margin-left: auto;
+            margin-right: auto;
+            min-width: 400px;
+            max-width: 500px;
+            height: 150px;
+        }
+
+        .dropped {
+            transition: 0.2s;
+            background: #abfcc3 !important;
+        }
+        .drag-over > .browse-label, .dropped > .browse-label {
+            transition: opacity 0.2s;
             opacity: 0;
+            visibility: hidden;
         }
         .drag-over {
-            background: #ccc;
+            background: #97c6ff !important;
         }
-        .drag-over > p {
-            transition: 0.3s;
+        .drag-over > p, .dropped > p {
+            transition: 0.2s;
             transform: translateY(-12px);
         }
-        p , label {
-            transition: 0.3s;
-        }
-
-        .upload-wrapper {
-            margin: 5px;
-            border: 1px solid blue;
-            width: 150px;
-        }
-
-        #upload-wrapper-1 {
-            float: left;
-        }
-        #upload-wrapper-2 {
-            float: right;
+        p , .browse-label {
+            user-select: none;
+            transition: 0.2s;
         }
 
         .drop-container {
             transition: 1s;
-            margin: 5px;
+            padding: 15px;
+            width: 150px;
+            background: #eee;
             text-align: center;
-            border: 1px solid red;
+            border-radius: 5px;
         }
 
-        label {
+        .browse-label {
             background: #bbb;
             line-height: 25px;
             display: inline-block;
@@ -137,27 +218,93 @@
             height: 25px;
             width: 100px;
         }
-        label:hover{
+        .browse-label:hover{
+            cursor: pointer;
             background: #ddd;
+        }
+
+        .drop-container-label {
+            text-align: center;
+            margin-bottom: 5px;
+        }
+        .drop-wrapper {
+            position: relative;
+            margin: 10px;
+        }
+        #drop-wrapper1 {
+            float: left;
+        }
+        #drop-wrapper2 {
+            float: right;
+        }
+
+        .remove-file {
+            width: 20px;
+            height: 20px;
+            line-height: 20px;
+            display: none;
+            user-select: none;
+            position: absolute;
+            right: 5px;
+            top: 28px;
+        }
+        .remove-file:hover {
+            cursor: pointer;
+            color: red !important;
+        }
+        .remove-file:active {
+            color: black !important;
+        }
+        .dropped > div {
+            display: unset;
+        }
+
+        .disabled {
+            opacity: 0.5 !important;
+        }
+        #getDiffButton:hover:not(.disabled) {
+            cursor: pointer;
+            background: #eee;
+            transition: 0.2s;
+        }
+        #getDiffButton {
+            margin-left: auto;
+            margin-right: auto;
+            text-align: center;
+            user-select: none;
+            line-height: 25px;
+            width: 100px;
+            height: 25px;
+            margin-top: 25px;
+            background: #ccc;
+            border-radius: 5px;
         }
     </style>
 </head>
+
+
 <body>
+    <div id="instructions"> Select BOM CSVs to upload</div>
 <div id="upload-container">
-    <div class="upload-wrapper" id="upload-wrapper-1">
+    <div class="drop-wrapper" id="drop-wrapper1">
+    <div class="drop-container-label">CSV 1</div>
         <div id="dropContainer1" class="drop-container">
-            <label for="file1">Browse</label>
-            <input type="file" style="display:none;" id="file1" name="file1">
+            <div class="remove-file" id="removeFile1">X</div>
+            <label class="browse-label" for="file1">Browse</label>
+            <input type="file" accept=".csv" style="display:none;" id="file1" name="file1">
             <p>Drag & Drop</p>
         </div>
-    </div>
-    <div class="upload-wrapper" id="upload-wrapper-2">
+        </div>
+        <div class="drop-wrapper" id="drop-wrapper2">
+    <div class="drop-container-label">CSV 2</div>
         <div id="dropContainer2" class="drop-container">
-            <label for="file2">Browse</label>
-            <input type="file" style="display:none;" id="file2" name="file2">
+            <div class="remove-file" id="removeFile2">X</div>
+            <label class="browse-label" for="file2">Browse</label>
+            <input type="file" accept=".csv" style="display:none;" id="file2" name="file2">
             <p>Drag & Drop</p>
         </div>
     </div>
 </div>
+<div id="getDiffButton" class="disabled">Get Diff</div>
 </body>
 </html>
