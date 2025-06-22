@@ -49,13 +49,31 @@
      * 
     *********************************************************************/
 
-    function compareBoms(event) {
+    async function compareBoms(event) {
         if (event.target.classList[0] === "disabled") {
-            console.log("button inactive");
             return;
         }
 
-        console.log("comparing boms");
+        const tableWrapper = document.getElementById("table-wrapper");
+        tableWrapper.innerHTML = "";
+        tableWrapper.classList.remove("empty");
+        tableWrapper.classList.add("populated");
+
+        const bom1 = await csvToArray(file1);
+        const bom2 = await csvToArray(file2);
+
+        const diff = getBomDiff(bom1, bom2);
+
+        // If diff is empty show message & return
+        if (diff.length === 0) {
+            // array is empty
+            tableWrapper.innerText = "BOMs are identical";
+            return;
+        }
+
+        const table = arrayToTable(diff);
+
+        tableWrapper.innerHTML = table;
     }
 
     function removeFile(event) {
@@ -196,8 +214,9 @@
         }, 5000);
     }
 
-    function csvToJSON(csv) {
-        let lines = csv.split("\n");
+    async function csvToString(csv) {
+        const text = await csv.text();
+        return text;
     }
 
     function clearFileContents(container) {
@@ -213,9 +232,180 @@
         if (fileName.toLowerCase().endsWith(".csv")) {
             return true;
         }
-    return false;
+        return false;
     }
 
+    async function csvToTable(csv) {
+        const text = await csvToString(csv);
+
+        const rows = [];
+        let current = '';
+        let inQuotes = false;
+        let field = '';
+        let row = [];
+
+        for (let i = 0; i < text.length; i++) {
+            const char = text[i];
+            const nextChar = text[i + 1];
+
+        // fields are wrapped in quotes when they contain commas. Keep the commas
+        if (inQuotes) {
+            if (char === '"' && nextChar === '"') {
+                field += '"';
+                i++;
+            } else if (char === '"') {
+                inQuotes = false;
+            } else {
+                field += char;
+            }
+        } else {
+            if (char === '"') {
+                inQuotes = true;
+                } else if (char === ',') {
+                    row.push(field);
+                    field = '';
+                } else if (char === '\n' || char === '\r') {
+                    if (field || row.length > 0) {
+                        row.push(field);
+                        field = '';
+                        rows.push(row);
+                        row = [];
+                    }
+                    if (char === '\r' && nextChar === '\n') i++;
+                } else {
+                    field += char;
+                }
+            }
+        }
+
+        if (field || row.length > 0) {
+            row.push(field);
+            rows.push(row);
+        }
+
+        if (rows.length === 0) return '';
+
+        const headers = rows[0];
+        const dataRows = rows.slice(1);
+
+        let table = '<table><thead><tr>';
+        headers.forEach(header => {
+            table += `<th>${header}</th>`;
+        });
+        table += '</tr></thead><tbody>';
+
+        dataRows.forEach(row => {
+            table += '<tr>';
+            row.forEach(cell => {
+                table += `<td>${cell}</td>`;
+            });
+            table += '</tr>';
+        });
+
+        table += '</tbody></table>';
+
+        return table;
+    }
+
+    async function csvToArray(csv) {
+        const text = await csvToString(csv);
+
+        const rows = [];
+        let inQuotes = false;
+        let field = '';
+        let row = [];
+
+        for (let i = 0; i < text.length; i++) {
+            const char = text[i];
+            const nextChar = text[i + 1];
+
+            // fields are wrapped in quotes when they contain commas. Keep the commas
+            if (inQuotes) {
+                if (char === '"' && nextChar === '"') {
+                    field += '"'; 
+                    i++;
+                } else if (char === '"') {
+                    inQuotes = false;
+                } else {
+                    field += char;
+                }
+            } else {
+                if (char === '"') {
+                    inQuotes = true;
+                } else if (char === ',') {
+                    row.push(field);
+                    field = '';
+                } else if (char === '\n' || char === '\r') {
+                    if (field || row.length > 0) {
+                        row.push(field);
+                        field = '';
+                        rows.push(row);
+                        row = [];
+                    }
+                    if (char === '\r' && nextChar === '\n') i++;
+                } else {
+                    field += char;
+                }
+            }
+        }
+
+        if (field || row.length > 0) {
+            row.push(field);
+            rows.push(row);
+        }
+
+        return rows;
+    }
+
+    function JSONToTable(json) {
+        let headers = Object.keys(jsonData[0]);
+        let table = "<table><thead><tr>";
+
+        headers.forEach(header => table += `<th>${header}</th>`);
+        table += `</tr></thead><tbody>`;
+
+        json.forEach(row => {
+            table += "<tr>";
+            headers.forEach(header => table += `<td>${row[header]}</td>`);
+            table += "<tr>";
+        });
+
+        table += "</tbody></table>";
+
+        return table;
+    }
+
+    function getIndexOfString(stringArr, arr) {
+      for (let i = 0; i < arr.length; i++) {
+            if (stringArr.includes(arr[i].toLowerCase())) {
+                return i;
+            }
+        }
+
+        return -1;
+    }
+
+    function arrayToTable(arr) {
+        let table = "<table border='1'><thead><tr>";
+
+        for (let i = 0; i < arr[0].length; i++) {
+            table += `<th>${arr[0][i]}</th>`;
+        }
+
+        table += "</tr></thead><tbody>";
+
+        for (let i = 1; i < arr.length; i++) {
+            table += "<tr>";
+            for (let j = 0; j < arr[i].length; j++) {
+                table += `<td>${arr[i][j]}</td>`;
+            }
+            table += "</tr>";
+        }
+
+        table += "</tbody></table>";
+
+    return table;
+    }
 
 
     /********************************************************************
@@ -223,13 +413,64 @@
      *                      Compare BOMs logic
      * 
     *********************************************************************/
-       
+    
+
+    function getBomDiff(bom1, bom2) {
+        let diff = [["Item", "Quantity"]];
+
+        // item and qty columns have multiple possible names
+        const itemStrings = ["item", "component name"];
+        const qtyStrings = ["quantity", "quantity per assembly"];
+
+        const bom1ItemIndex = getIndexOfString(itemStrings, bom1[0]);
+        const bom1QtyIndex = getIndexOfString(qtyStrings, bom1[0]);
+        const bom2ItemIndex = getIndexOfString(itemStrings, bom2[0]);
+        const bom2QtyIndex = getIndexOfString(qtyStrings, bom2[0]);
         
+        if (bom1ItemIndex === -1 || bom1QtyIndex === -1 || bom2ItemIndex === -1 || bom2QtyIndex === -1) {
+            console.log("Error finding Item or Qty colums");
+            return diff;
+        }
 
+        let bomLength = Math.min(bom1.length, bom2.length);
 
+        // iterate through all lines on first bom
+        for (let i = 1; i < bomLength; i++) {
+            let matched = false;
+            // iterate through all lines on second bom
+            for (let j = 1; j < bom2.length; j++) {
+                // if item found
+                if (bom1[i][bom1ItemIndex] === bom2[j][bom2ItemIndex]) {
+                    // if qty is the same
+                    if (bom1[i][bom1QtyIndex] === bom2[j][bom2QtyIndex]) {
+                        
+                        bom2.splice(j, 1);
+                    }
+                    // if qty is different
+                    else {
+                        diff.push([bom1[i][bom1ItemIndex], bom1[i][bom1QtyIndex] - bom2[j][bom2QtyIndex]]);
+                        console.log(`Qty difference BOMS: ${bom2[j][bom2ItemIndex]}: ${bom1[i][bom1QtyIndex]} -> ${bom2[j][bom2QtyIndex]}`);
+                        bom2.splice(j, 1);
+                    }
+                        matched = true;
+                        break;
+                    
+                }
+                // if not found, add negative qty of item to diff
+                if (!matched) {
+                    diff.push([bom1[i][bom1ItemIndex], -bom1[i][bom1QtyIndex]]);
+                    matched = false;
+                    break;
+                }
+            }
+        }
+        // Add remaining items from bom2 to diff
+        for (let i = 1; i < bom2.length; i++) {
+            diff.push([bom2[i][bom2ItemIndex], bom2[i][bom2QtyIndex]]);
+        }
 
-
-
+        return diff;
+    }
 
 
 
@@ -365,6 +606,56 @@
             background: #ccc;
             border-radius: 5px;
         }
+
+        #table:not(.empty) {
+            display: unset;
+        }
+        #table:has(.empty) {
+            display: none;
+        }
+        #table {
+            text-align: center;
+            align-content: center;
+        }
+        #table-wrapper {
+            margin-top: 100px;
+            margin-left: 25px;
+            margin-right: 25px;
+
+        }
+
+        .empty {
+            display: none;
+        }
+        .populated {
+            display: unset;
+        }
+
+        table {
+            margin-left: auto;
+            margin-right: auto;
+            border-collapse: collapse;
+            border: none;
+        }
+        th, td {
+            border: 1px solid black;
+        }
+        table th {
+            border-top: none;
+        }
+        th:first-child, td:first-child {
+            border-left: none;
+        }
+        th:last-child, td:last-child {
+            border-right: none;
+        }
+        th {
+            border-top: none;
+        }
+        table tr:last-child td {
+            border-bottom: none;
+        }
+
         #wip {
             margin-left: auto;
             margin-right: auto;
@@ -377,7 +668,7 @@
 
 
 <body>
-    <div id="wip">This website is a work in progress. <br>Diff comparesion has not yet been implemented.</div>
+    <div id="wip">This website is a work in progress. <br>Unexpected errors may occur</div>
     <div id="instructions"> Select BOM CSVs to upload</div>
 <div id="upload-container">
     <div class="drop-wrapper" id="drop-wrapper1">
@@ -400,5 +691,9 @@
     </div>
 </div>
 <div id="getDiffButton" class="disabled">Get Diff</div>
+<div id="table-wrapper" class="empty">
+
+    
+</div>
 </body>
 </html>
