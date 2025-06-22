@@ -57,17 +57,19 @@
         const tableWrapper = document.getElementById("table-wrapper");
         tableWrapper.innerHTML = "";
         tableWrapper.classList.remove("empty");
-        //tableWrapper.classList.add("populated");
 
         const bom1 = await csvToArray(file1);
         const bom2 = await csvToArray(file2);
 
         const diff = getBomDiff(bom1, bom2);
 
-        // If diff is empty show message & return
         if (diff.length === 1) {
-            // array is empty
-            tableWrapper.innerHTML = "BOMs are identical";
+            if (diff[0][0] === "Item") {
+                tableWrapper.innerHTML = "BOMs are identical";
+                return;
+            }
+
+            tableWrapper.innerHTML = diff[0][0];
             return;
         }
 
@@ -428,7 +430,7 @@
         const bom2QtyIndex = getIndexOfString(qtyStrings, bom2[0]);
         
         if (bom1ItemIndex === -1 || bom1QtyIndex === -1 || bom2ItemIndex === -1 || bom2QtyIndex === -1) {
-            console.log("Error finding Item or Qty colums");
+            diff[0][0] = "Error: Item or Quantity column not found";
             return diff;
         }
 
