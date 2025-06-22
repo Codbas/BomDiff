@@ -65,7 +65,7 @@
         const diff = getBomDiff(bom1, bom2);
 
         // If diff is empty show message & return
-        if (diff.length === 0) {
+        if (diff.length === 1) {
             // array is empty
             tableWrapper.innerText = "BOMs are identical";
             return;
@@ -432,38 +432,36 @@
             return diff;
         }
 
-        let bomLength = Math.min(bom1.length, bom2.length);
-
         // iterate through all lines on first bom
-        for (let i = 1; i < bomLength; i++) {
+        for (let i = 1; i < bom1.length; i++) {
             let matched = false;
-            // iterate through all lines on second bom
-            for (let j = 1; j < bom2.length; j++) {
+            const item1 = bom1[i][bom1ItemIndex];
+            const qty1 = parseFloat(bom1[i][bom1QtyIndex]);
+
+            // iterate through all lines on second bom in reverse
+            for (let j = bom2.length - 1; j >= 1; j--) {
+                const item2 = bom2[j][bom2ItemIndex];
+                const qty2 = parseFloat(bom2[j][bom2QtyIndex]);
+                
                 // if item found
-                if (bom1[i][bom1ItemIndex] === bom2[j][bom2ItemIndex]) {
-                    // if qty is the same
-                    if (bom1[i][bom1QtyIndex] === bom2[j][bom2QtyIndex]) {
-                        
-                        bom2.splice(j, 1);
+                if (item1 === item2) {
+                    matched = true;
+                    if (qty1 === qty2) {
                     }
-                    // if qty is different
                     else {
-                        diff.push([bom1[i][bom1ItemIndex], bom1[i][bom1QtyIndex] - bom2[j][bom2QtyIndex]]);
-                        console.log(`Qty difference BOMS: ${bom2[j][bom2ItemIndex]}: ${bom1[i][bom1QtyIndex]} -> ${bom2[j][bom2QtyIndex]}`);
-                        bom2.splice(j, 1);
+                        diff.push([item1, qty1 - qty2]);
                     }
-                        matched = true;
-                        break;
-                    
-                }
-                // if not found, add negative qty of item to diff
-                if (!matched) {
-                    diff.push([bom1[i][bom1ItemIndex], -bom1[i][bom1QtyIndex]]);
-                    matched = false;
+                    bom2.splice(j, 1);
                     break;
                 }
             }
+
+            // if not found, add negative qty of item to diff
+            if (!matched) {
+                diff.push([item1, -qty1]);
+            }
         }
+
         // Add remaining items from bom2 to diff
         for (let i = 1; i < bom2.length; i++) {
             diff.push([bom2[i][bom2ItemIndex], bom2[i][bom2QtyIndex]]);
