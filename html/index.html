@@ -57,7 +57,7 @@
         const tableWrapper = document.getElementById("table-wrapper");
         tableWrapper.innerHTML = "";
         tableWrapper.classList.remove("empty");
-        tableWrapper.classList.add("populated");
+        //tableWrapper.classList.add("populated");
 
         const bom1 = await csvToArray(file1);
         const bom2 = await csvToArray(file2);
@@ -67,7 +67,7 @@
         // If diff is empty show message & return
         if (diff.length === 1) {
             // array is empty
-            tableWrapper.innerText = "BOMs are identical";
+            tableWrapper.innerHTML = "BOMs are identical";
             return;
         }
 
@@ -386,7 +386,7 @@
     }
 
     function arrayToTable(arr) {
-        let table = "<table border='1'><thead><tr>";
+        let table = "<table><thead><tr>";
 
         for (let i = 0; i < arr[0].length; i++) {
             table += `<th>${arr[0][i]}</th>`;
@@ -605,22 +605,7 @@
             border-radius: 5px;
         }
 
-        #table:not(.empty) {
-            display: unset;
-        }
-        #table:has(.empty) {
-            display: none;
-        }
-        #table {
-            text-align: center;
-            align-content: center;
-        }
-        #table-wrapper {
-            margin-top: 100px;
-            margin-left: 25px;
-            margin-right: 25px;
 
-        }
 
         .empty {
             display: none;
@@ -629,12 +614,19 @@
             display: unset;
         }
 
+        #table-wrapper {
+            text-align: center;
+            margin-left: auto;
+            margin-right: auto;
+            margin-top: 50px;
+        }
         table {
             margin-left: auto;
             margin-right: auto;
             border-collapse: collapse;
             border: none;
         }
+        
         th, td {
             border: 1px solid black;
         }
@@ -647,20 +639,28 @@
         th:last-child, td:last-child {
             border-right: none;
         }
-        th {
-            border-top: none;
-        }
         table tr:last-child td {
             border-bottom: none;
+        }
+
+        tbody td:first-child {
+            padding-left: 5px;
+            text-align: left;
+            min-width: 120px;
+        }
+        tbody td:nth-child(2) {
+            min-width: 80px;
         }
 
         #wip {
             margin-left: auto;
             margin-right: auto;
             text-align: center;
+            margin-top: 20px;
             color: red;
             user-select: none;
         }
+
     </style>
 </head>
 
@@ -689,9 +689,6 @@
     </div>
 </div>
 <div id="getDiffButton" class="disabled">Get Diff</div>
-<div id="table-wrapper" class="empty">
-
-    
-</div>
+<div id="table-wrapper" class="empty"></div>
 </body>
 </html>
