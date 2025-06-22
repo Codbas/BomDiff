@@ -378,9 +378,18 @@
     }
 
     function getIndexOfString(stringArr, arr) {
-      for (let i = 0; i < arr.length; i++) {
-            if (stringArr.includes(arr[i].toLowerCase())) {
-                return i;
+        if (typeof stringArr === "string") {
+            for (let i = 0; i < arr.length; i++) {
+                if (arr[i].toLowerCase() === stringArr) {
+                    return i;
+                }
+            }
+        }
+        else {
+            for (let i = 0; i < arr.length; i++) {
+                if (stringArr.includes(arr[i].toLowerCase())) {
+                    return i;
+                }
             }
         }
 
@@ -406,7 +415,7 @@
 
         table += "</tbody></table>";
 
-    return table;
+        return table;
     }
 
 
@@ -418,7 +427,8 @@
     
 
     function getBomDiff(bom1, bom2) {
-        let diff = [["Item", "Quantity"]];
+        let diff = [["Item", "Quantity", "Description"]];
+        let hasDescription = true;
 
         // item and qty columns have multiple possible names
         const itemStrings = ["item", "component name"];
@@ -426,12 +436,20 @@
 
         const bom1ItemIndex = getIndexOfString(itemStrings, bom1[0]);
         const bom1QtyIndex = getIndexOfString(qtyStrings, bom1[0]);
+        const bom1DescIndex = getIndexOfString("description", bom1[0]);
         const bom2ItemIndex = getIndexOfString(itemStrings, bom2[0]);
         const bom2QtyIndex = getIndexOfString(qtyStrings, bom2[0]);
+        const bom2DescIndex = getIndexOfString("description", bom2[0]);
         
         if (bom1ItemIndex === -1 || bom1QtyIndex === -1 || bom2ItemIndex === -1 || bom2QtyIndex === -1) {
             diff[0][0] = "Error: Item or Quantity column not found";
             return diff;
+        }
+
+        if (bom1DescIndex === -1 || bom2DescIndex === -1) {
+            console.log("No Description column found...");
+            hasDescription = false;
+            diff[0].splice(2, 1);
         }
 
         // iterate through all lines on first bom
@@ -439,20 +457,35 @@
             let matched = false;
             const item1 = bom1[i][bom1ItemIndex];
             const qty1 = parseFloat(bom1[i][bom1QtyIndex]);
+            let desc1;
+
+            if (hasDescription) {
+                desc1 = bom1[i][bom1DescIndex];
+            }
 
             // iterate through all lines on second bom in reverse
             for (let j = bom2.length - 1; j >= 1; j--) {
                 const item2 = bom2[j][bom2ItemIndex];
                 const qty2 = parseFloat(bom2[j][bom2QtyIndex]);
+                let desc2;
+
+                if (hasDescription) {
+                    desc2 = bom2[j][bom2DescIndex];
+                }
                 
                 // if item found
                 if (item1 === item2) {
                     matched = true;
-                    if (qty1 === qty2) {
+
+                    if (qty1 !== qty2) {
+                        if (hasDescription) {
+                            diff.push([item1, qty1 - qty2, desc1]);
+                        }
+                        else {
+                            diff.push([item1, qty1 - qty2]);
+                        }
                     }
-                    else {
-                        diff.push([item1, qty1 - qty2]);
-                    }
+
                     bom2.splice(j, 1);
                     break;
                 }
@@ -460,15 +493,27 @@
 
             // if not found, add negative qty of item to diff
             if (!matched) {
-                diff.push([item1, -qty1]);
+                if (hasDescription) {
+                    diff.push([item1, -qty1, desc1]);
+                }
+                else {
+                    diff.push([item1, -qty1]);
+                }
             }
         }
 
         // Add remaining items from bom2 to diff
         for (let i = 1; i < bom2.length; i++) {
-            diff.push([bom2[i][bom2ItemIndex], bom2[i][bom2QtyIndex]]);
+            if (hasDescription) {
+                const desc = bom2[i][bom2DescIndex];
+                console.log(desc);
+                diff.push([bom2[i][bom2ItemIndex], bom2[i][bom2QtyIndex], bom2[i][bom2DescIndex]]);
+            }
+            else {
+                diff.push([bom2[i][bom2ItemIndex], bom2[i][bom2QtyIndex]]);
+            }
         }
-
+        console.log(diff);
         return diff;
     }
 
@@ -621,6 +666,7 @@
             margin-left: auto;
             margin-right: auto;
             margin-top: 50px;
+            padding-bottom: 50px;
         }
         table {
             margin-left: auto;
@@ -646,21 +692,17 @@
         }
 
         tbody td:first-child {
-            padding-left: 5px;
+            padding-left: 10px;
             text-align: left;
             min-width: 120px;
         }
         tbody td:nth-child(2) {
             min-width: 80px;
         }
-
-        #wip {
-            margin-left: auto;
-            margin-right: auto;
-            text-align: center;
-            margin-top: 20px;
-            color: red;
-            user-select: none;
+        tbody td:nth-child(3) {
+            padding-left: 10px;
+            text-align: left;
+            min-width: 240px;
         }
 
     </style>
@@ -668,8 +710,6 @@
 
 
 <body>
-    <div id="wip">This website is a work in progress. <br>Unexpected errors may occur</div>
-    <div id="instructions"> Select BOM CSVs to upload</div>
 <div id="upload-container">
     <div class="drop-wrapper" id="drop-wrapper1">
     <div class="drop-container-label">CSV 1</div>
