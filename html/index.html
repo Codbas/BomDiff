@@ -80,6 +80,7 @@
         const table = arrayToTable(diff);
 
         tableWrapper.innerHTML = table;
+        addColorClassToNumberCells(tableWrapper);
     }
 
     function removeFile(event) {
@@ -241,6 +242,48 @@
         return false;
     }
 
+    function formatNumberString(str, length) {
+        const sign = str[0];
+        const number = str.slice(1);
+        return sign + number.padStart(length - 1, " ");
+    }
+
+    async function addColorClassToNumberCells(table) {
+        let qtyIndex = -1;
+        const headerCells = table.querySelectorAll("thead tr th");
+
+        headerCells.forEach((cell, index) => {
+            if (cell.textContent.trim().toLowerCase() === "quantity") {
+                qtyIndex = index;
+            }
+        });
+
+        if (qtyIndex === -1) {
+            console.log("ERROR: Quantity index not found. Quantity column will not be colored.");
+            return;
+        }
+        
+        const rows = table.querySelectorAll("tbody tr");
+        const width = 10;
+        rows.forEach(row => {
+            const cell = row.querySelectorAll("td")[qtyIndex];
+
+            const qty = parseFloat(cell.textContent.trim());
+
+            if (!isNaN(qty)) {
+                if (qty > 0) {
+                    cell.classList.add("positive");
+                    cell.textContent = formatNumberString("+" + cell.textContent, width);
+                }
+                else {
+                    cell.classList.add("negative");
+                    cell.textContent = formatNumberString(cell.textContent, width);
+                }
+            }
+        });
+
+    }
+
     async function csvToTable(csv) {
         const text = await csvToString(csv);
 
@@ -384,7 +427,7 @@
     function getIndexOfString(stringArr, arr) {
         if (typeof stringArr === "string") {
             for (let i = 0; i < arr.length; i++) {
-                if (arr[i].toLowerCase() === stringArr) {
+                if (arr[i].toLowerCase() == stringArr.toLowerCase()) {
                     return i;
                 }
             }
@@ -431,96 +474,76 @@
     
 
     function getBomDiff(bom1, bom2) {
-        let diff = [["Item", "Quantity", "Description"]];
-        let hasDescription = true;
+    let diff = [["Item", "Quantity", "Description"]];
+    let hasDescription = true;
 
-        // item and qty columns have multiple possible names
-        const itemStrings = ["item", "component name"];
-        const qtyStrings = ["quantity", "quantity per assembly"];
+    const itemStrings = ["item", "component name", "part"];
+    const qtyStrings = ["quantity", "quantity per assembly"];
 
-        const bom1ItemIndex = getIndexOfString(itemStrings, bom1[0]);
-        const bom1QtyIndex = getIndexOfString(qtyStrings, bom1[0]);
-        const bom1DescIndex = getIndexOfString("description", bom1[0]);
-        const bom2ItemIndex = getIndexOfString(itemStrings, bom2[0]);
-        const bom2QtyIndex = getIndexOfString(qtyStrings, bom2[0]);
-        const bom2DescIndex = getIndexOfString("description", bom2[0]);
-        
-        if (bom1ItemIndex === -1 || bom1QtyIndex === -1 || bom2ItemIndex === -1 || bom2QtyIndex === -1) {
-            diff[0][0] = "Error: Item or Quantity column not found";
-            return diff;
-        }
+    const bom1ItemIndex = getIndexOfString(itemStrings, bom1[0]);
+    const bom1QtyIndex = getIndexOfString(qtyStrings, bom1[0]);
+    const bom1DescIndex = getIndexOfString("description", bom1[0]);
+    const bom2ItemIndex = getIndexOfString(itemStrings, bom2[0]);
+    const bom2QtyIndex = getIndexOfString(qtyStrings, bom2[0]);
+    const bom2DescIndex = getIndexOfString("description", bom2[0]);
 
-        if (bom1DescIndex === -1 || bom2DescIndex === -1) {
-            console.log("No Description column found...");
-            hasDescription = false;
-            diff[0].splice(2, 1);
-        }
-
-        // iterate through all lines on first bom
-        for (let i = 1; i < bom1.length; i++) {
-            let matched = false;
-            const item1 = bom1[i][bom1ItemIndex];
-            const qty1 = parseFloat(bom1[i][bom1QtyIndex]);
-            let desc1;
-
-            if (hasDescription) {
-                desc1 = bom1[i][bom1DescIndex];
-            }
-
-            // iterate through all lines on second bom in reverse
-            for (let j = bom2.length - 1; j >= 1; j--) {
-                const item2 = bom2[j][bom2ItemIndex];
-                const qty2 = parseFloat(bom2[j][bom2QtyIndex]);
-                let desc2;
-
-                if (hasDescription) {
-                    desc2 = bom2[j][bom2DescIndex];
-                }
-                
-                // if item found
-                if (item1 === item2) {
-                    matched = true;
-
-                    if (qty1 !== qty2) {
-                        if (hasDescription) {
-                            diff.push([item1, qty1 - qty2, desc1]);
-                        }
-                        else {
-                            diff.push([item1, qty1 - qty2]);
-                        }
-                    }
-
-                    bom2.splice(j, 1);
-                    break;
-                }
-            }
-
-            // if not found, add negative qty of item to diff
-            if (!matched) {
-                if (hasDescription) {
-                    diff.push([item1, -qty1, desc1]);
-                }
-                else {
-                    diff.push([item1, -qty1]);
-                }
-            }
-        }
-
-        // Add remaining items from bom2 to diff
-        for (let i = 1; i < bom2.length; i++) {
-            if (hasDescription) {
-                const desc = bom2[i][bom2DescIndex];
-                console.log(desc);
-                diff.push([bom2[i][bom2ItemIndex], bom2[i][bom2QtyIndex], bom2[i][bom2DescIndex]]);
-            }
-            else {
-                diff.push([bom2[i][bom2ItemIndex], bom2[i][bom2QtyIndex]]);
-            }
-        }
-        console.log(diff);
+    if (bom1ItemIndex === -1 || bom1QtyIndex === -1 || bom2ItemIndex === -1 ||  bom2QtyIndex === -1) {
+        diff[0][0] = "Error: Item or Quantity column not found";
         return diff;
     }
 
+    if (bom1DescIndex === -1 || bom2DescIndex === -1) {
+        console.log("No Description column found.");
+        hasDescription = false;
+        diff[0].splice(2, 1);
+    }
+
+    const bom1Map = aggregateBOM(bom1, bom1ItemIndex, bom1QtyIndex, bom1DescIndex, hasDescription);
+    const bom2Map = aggregateBOM(bom2, bom2ItemIndex, bom2QtyIndex, bom2DescIndex, hasDescription);
+
+    // Compare bom1 to bom2
+    for (const [item, { qty: qty1, desc }] of bom1Map.entries()) {
+        const qty2 = bom2Map.has(item) ? bom2Map.get(item).qty : 0;
+        const diffQty = qty1 - qty2;
+        if (Math.abs(diffQty) > 0.0001) {
+            if (hasDescription) {
+                diff.push([item, diffQty, desc]);
+            } else {
+                diff.push([item, diffQty]);
+            }
+        }
+        bom2Map.delete(item);
+    }
+
+    // Remaining items in bom2
+    for (const [item, { qty, desc }] of bom2Map.entries()) {
+        if (hasDescription) {
+            diff.push([item, -qty, desc]);
+        } else {
+            diff.push([item, -qty]);
+        }
+    }
+
+    return diff;
+}
+
+
+    function aggregateBOM(bom, itemIndex, qtyIndex, descIndex, hasDescription) {
+        const map = new Map();
+
+        for (let i = 1; i < bom.length; i++) {
+            const item = bom[i][itemIndex];
+            const qty = parseFloat(bom[i][qtyIndex]) || 0;
+            const desc = hasDescription ? bom[i][descIndex] : "";
+
+            if (map.has(item)) {
+                map.get(item).qty += qty;
+            } else {
+                map.set(item, { qty: qty, desc: desc });
+            }
+        }
+        return map;
+    }
 
 
     </script>
@@ -678,7 +701,6 @@
         }
 
 
-
         .empty {
             display: none;
         }
@@ -698,6 +720,7 @@
             margin-right: auto;
             border-collapse: collapse;
             border: none;
+            font-family: monospace;
         }
         
         th, td {
@@ -718,11 +741,16 @@
 
         tbody td:first-child {
             padding-left: 10px;
+            padding-right: 10px;
             text-align: left;
             min-width: 120px;
         }
         tbody td:nth-child(2) {
             min-width: 80px;
+            text-align: right;
+            padding-right: 10px;
+            padding-left: 10px;
+            white-space: pre;
         }
         tbody td:nth-child(3) {
             padding-left: 10px;
@@ -730,6 +758,12 @@
             min-width: 240px;
         }
 
+        .positive {
+            color: green;
+        }
+        .negative {
+            color: red;
+        }
     </style>
 </head>
 
