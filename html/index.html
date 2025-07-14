@@ -191,11 +191,10 @@
      * 
     *********************************************************************/
 
-    
+
     function toggleTheme() {
         const currentTheme = document.body.classList.contains("dark");
         const newThemeIsDark = !currentTheme;
-        console.log(newThemeIsDark);
 
         if (newThemeIsDark === true) {
             document.body.classList.add("dark");
@@ -610,7 +609,14 @@
             --color-error-bg: hsl(0 50% 80%);
             --color-error-border: hsl(0 50% 60%);
             --color-error-text: hsl(0 50% 5%);
+
+            --transition-delay: 0.1s;
+            --border-radius: 5px;
+
+            --dropbox-width: 175px;
+            --dropbox-height: 100px;
         }
+
         body.dark {
             --bg-dark: hsl(0 0% 0%);
             --bg: hsl(0 0% 5%);
@@ -628,7 +634,6 @@
             --color-error-bg: hsl(0 50% 20%);
             --color-error-border: hsl(0 50% 40%);
             --color-error-text: hsl(0 50% 95%);
-            --transition-delay: 0.1s;
         }
         html, body {
             height: 100%;
@@ -674,7 +679,7 @@
             float: right;
             width: 25px;
             height: 25px;
-            border-radius: 5px;
+            border-radius: var(--border-radius);
             user-select: none;
         }
         #theme-switch {
@@ -695,9 +700,10 @@
             margin-top: 100px;
             margin-left: auto;
             margin-right: auto;
-            min-width: 400px;
-            max-width: 500px;
-            height: 150px;
+            min-width: 475px;
+            max-width: 525px;
+            height: 200px;
+            max-height: 200px;
         }
 
         .error {
@@ -722,9 +728,10 @@
         }
         .drag-over > p, .dropped > p, .error > p {
             transition: var(--transition-delay);
-            transform: translateY(-12px);
+            transform: translateY(-24px);
         }
         p {
+            margin-top: 30px;
             user-select: none;
             transition: var(--transition-delay);
 
@@ -733,21 +740,24 @@
         .drop-container {
             transition: var(--transition-delay);
             padding: 15px;
-            width: 150px;
+            width: var(--dropbox-width);
+            height: var(--dropbox-height);
+            min-width: var(--dropbox-min-width);
             background: var(--bg);
             color: var(--text);
             border: solid 1px var(--border);
             text-align: center;
-            border-radius: 5px;
+            border-radius: var(--border-radius);
         }
 
         .browse-label {
+            margin-top: 8px;
             transition: var(--transition-delay);
             user-select: none;
             background: var(--bg-light);
             display: inline-block;
             line-height: 25px;
-            border-radius: 5px;
+            border-radius: var(--border-radius);
             height: 25px;
             width: 100px;
             border: 1px solid var(--border);
@@ -827,7 +837,7 @@
             background: var(--bg-light);
             color: var(--text);
             border: 1px solid var(--border);
-            border-radius: 5px;
+            border-radius: var(--border-radius);
 
         }
 
@@ -848,7 +858,7 @@
             margin: 50px auto 0 auto;
             padding: 25px;
             width: fit-content;
-            border-radius: 5px;
+            border-radius: var(--border-radius);
             border: solid 1px var(--border);
             background: var(--bg);
         }
@@ -901,7 +911,7 @@
         }
 
         .positive {
-            color: green;
+            color: rgb(0, 160, 0);
         }
         .negative {
             color: red;
