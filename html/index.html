@@ -13,8 +13,6 @@
     const dragCounters = new Map();
     let timeoutId = null;
 
-
-
     window.addEventListener("load", ()=> {
         const dropContainers = document.getElementsByClassName("drop-container");
         const removeFileButtons = document.getElementsByClassName("remove-file");
@@ -65,8 +63,11 @@
         }
 
         const tableWrapper = document.getElementById("table-wrapper");
+        const diffCard = document.getElementById("diff-card");
+
         tableWrapper.innerHTML = "";
         tableWrapper.classList.remove("empty");
+        diffCard.classList.remove("empty");
 
         const bom1 = await csvToArray(file1);
         const bom2 = await csvToArray(file2);
@@ -87,6 +88,7 @@
 
         tableWrapper.innerHTML = table;
         addColorClassToNumberCells(tableWrapper);
+        setCsvNames();
     }
 
     function removeFile(event) {
@@ -229,6 +231,16 @@
         return null;
     }
 
+    function setCsvNames() {
+        // TODO: if file name without extension is more than 12 characters, strip to 12 and add 3 periods.
+        const csvNames = document.getElementById("csv-names");
+
+        const csv1 = file1.name.slice(0, -4);
+        const csv2 = file2.name.slice(0, -4);
+
+        csvNames.innerText = `${csv1}   →   ${csv2}`;
+    }
+
     function setFileContents(container, file) {
         if (container.id !== "dropContainer1" && container.id !== "dropContainer2") {
             console.log("Error: " + container.id + " is not a valid container");
@@ -244,6 +256,7 @@
     }
 
     function updateContainer(container, fileName) {
+        // TODO: truncate file names that are too long
         if (isCSV(fileName)) {
             container.classList.add("dropped");
             container.classList.remove("error");
@@ -517,59 +530,66 @@
     *********************************************************************/
     
 
+    /* TODO:    * add check for unit of measure. 
+                * Convert different units for comparison
+                * Display Unit of measure after quantity
+    */
+
+    // TODO: Add option to select columns to compare
+
     function getBomDiff(bom1, bom2) {
-    let diff = [["Item", "Quantity", "Description"]];
-    let hasDescription = true;
+        let diff = [["Item", "Quantity", "Description"]];
+        let hasDescription = true;
 
-    const itemStrings = ["item", "component name", "part"];
-    const qtyStrings = ["quantity", "quantity per assembly"];
+        const itemStrings = ["item", "component name", "part"];
+        const qtyStrings = ["quantity", "quantity per assembly"];
 
-    const bom1ItemIndex = getIndexOfString(itemStrings, bom1[0]);
-    const bom1QtyIndex = getIndexOfString(qtyStrings, bom1[0]);
-    const bom1DescIndex = getIndexOfString("description", bom1[0]);
-    const bom2ItemIndex = getIndexOfString(itemStrings, bom2[0]);
-    const bom2QtyIndex = getIndexOfString(qtyStrings, bom2[0]);
-    const bom2DescIndex = getIndexOfString("description", bom2[0]);
+        const bom1ItemIndex = getIndexOfString(itemStrings, bom1[0]);
+        const bom1QtyIndex = getIndexOfString(qtyStrings, bom1[0]);
+        const bom1DescIndex = getIndexOfString("description", bom1[0]);
+        const bom2ItemIndex = getIndexOfString(itemStrings, bom2[0]);
+        const bom2QtyIndex = getIndexOfString(qtyStrings, bom2[0]);
+        const bom2DescIndex = getIndexOfString("description", bom2[0]);
 
-    if (bom1ItemIndex === -1 || bom1QtyIndex === -1 || bom2ItemIndex === -1 ||  bom2QtyIndex === -1) {
-        diff[0][0] = "Error: Item or Quantity column not found";
-        return diff;
-    }
+        if (bom1ItemIndex === -1 || bom1QtyIndex === -1 || bom2ItemIndex === -1 ||  bom2QtyIndex === -1) {
+            diff[0][0] = "Error: Item or Quantity column not found";
+            return diff;
+        }
 
-    if (bom1DescIndex === -1 || bom2DescIndex === -1) {
-        console.log("No Description column found.");
-        hasDescription = false;
-        diff[0].splice(2, 1);
-    }
+        if (bom1DescIndex === -1 || bom2DescIndex === -1) {
+            console.log("No Description column found.");
+            hasDescription = false;
+            diff[0].splice(2, 1);
+        }
 
-    const bom1Map = aggregateBOM(bom1, bom1ItemIndex, bom1QtyIndex, bom1DescIndex, hasDescription);
-    const bom2Map = aggregateBOM(bom2, bom2ItemIndex, bom2QtyIndex, bom2DescIndex, hasDescription);
+        const bom1Map = aggregateBOM(bom1, bom1ItemIndex, bom1QtyIndex, bom1DescIndex, hasDescription);
+        const bom2Map = aggregateBOM(bom2, bom2ItemIndex, bom2QtyIndex, bom2DescIndex, hasDescription);
 
-    // Compare bom1 to bom2
-    for (const [item, { qty: qty1, desc }] of bom1Map.entries()) {
-        const qty2 = bom2Map.has(item) ? bom2Map.get(item).qty : 0;
-        const diffQty = qty1 - qty2;
-        if (Math.abs(diffQty) > 0.0001) {
+        // Compare bom1 to bom2
+        for (const [item, { qty: qty1, desc }] of bom1Map.entries()) {
+            const qty2 = bom2Map.has(item) ? bom2Map.get(item).qty : 0;
+            const diffQty = qty2 - qty1;
+            if (Math.abs(diffQty) > 0.0001) {
+                if (hasDescription) {
+                    diff.push([item, diffQty, desc]);
+                } else {
+                    diff.push([item, diffQty]);
+                }
+            }
+            bom2Map.delete(item);
+        }
+
+        // Remaining items in bom2
+        for (const [item, { qty, desc }] of bom2Map.entries()) {
             if (hasDescription) {
-                diff.push([item, diffQty, desc]);
+                diff.push([item, qty, desc]);
             } else {
-                diff.push([item, diffQty]);
+                diff.push([item, qty]);
             }
         }
-        bom2Map.delete(item);
-    }
 
-    // Remaining items in bom2
-    for (const [item, { qty, desc }] of bom2Map.entries()) {
-        if (hasDescription) {
-            diff.push([item, -qty, desc]);
-        } else {
-            diff.push([item, -qty]);
-        }
+        return diff;
     }
-
-    return diff;
-}
 
 
     function aggregateBOM(bom, itemIndex, qtyIndex, descIndex, hasDescription) {
@@ -644,12 +664,14 @@
             background-color: var(--bg-dark);
         }
 
+/*************           Header       ******************/
         #header {
             position: fixed;
             z-index: 1000;
             width: 100%;
             height: 55px;
-            background: var(--bg-dark);
+            background: var(--bg);
+            border-bottom: 1px solid var(--border);
             overflow: hidden;
             user-select: none;
         }
@@ -686,6 +708,7 @@
             width: 25px;
             height: 25px;
         }
+/***************    End Header       ********************/
 
 
         #page-content {
@@ -814,6 +837,8 @@
             display: unset;
         }
 
+
+/************ Get Diff Button     *******************/
         .disabled {
             background: var(--bg) !important;
             color: var(--text-disabled) !important;
@@ -851,16 +876,39 @@
         .populated {
             display: unset;
         }
+/************ End Get Diff Button     ****************/
 
-        #table-wrapper {
+
+/************       Diff Card        ****************/
+        #diff-card {
             display: block;
             align-self: center;
             margin: 50px auto 0 auto;
-            padding: 25px;
+            padding: 10px 25px 25px 25px;
+            margin-bottom: 25px;
             width: fit-content;
             border-radius: var(--border-radius);
             border: solid 1px var(--border);
             background: var(--bg);
+        }
+        #diff-card.empty {
+            display: none;
+        }
+
+        #csv-names {
+            color: var(--text-muted);
+            text-align: center;
+            font-family: monospace;
+            font-size: 16px;
+            font-weight: 700;
+            white-space: pre;
+        }
+/************     End Diff Card      ****************/
+
+
+/****************     Table       *********************/
+        #table-wrapper {
+            margin-top: 20px;
         }
         #table-wrapper:empty {
             display: none;
@@ -916,6 +964,7 @@
         .negative {
             color: red;
         }
+/************ End Table   *******************/
     </style>
 </head>
 
@@ -973,7 +1022,10 @@
             </div>
         </div>
         <div id="getDiffButton" class="disabled">Get Diff</div>
-        <div id="table-wrapper" class="empty"></div>
+        <div id="diff-card" class="empty">
+            <div id="csv-names"></div>
+            <div id="table-wrapper" class="empty"></div>
+        </div>
     </div>
 </body>
 </html>
