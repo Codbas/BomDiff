@@ -77,6 +77,7 @@
         if (diff.length === 1) {
             if (diff[0][0] === "Item") {
                 tableWrapper.innerHTML = "BOMs are identical";
+                setCsvNames(true);
                 return;
             }
 
@@ -88,7 +89,7 @@
 
         tableWrapper.innerHTML = table;
         addColorClassToNumberCells(tableWrapper);
-        setCsvNames();
+        setCsvNames(false);
     }
 
     function removeFile(event) {
@@ -231,9 +232,14 @@
         return null;
     }
 
-    function setCsvNames() {
+    function setCsvNames(identical) {
         // TODO: if file name without extension is more than 12 characters, strip to 12 and add 3 periods.
         const csvNames = document.getElementById("csv-names");
+
+        if (identical) {
+            csvNames.innerText = "";
+            return;
+        }
 
         const csv1 = file1.name.slice(0, -4);
         const csv2 = file2.name.slice(0, -4);
@@ -920,6 +926,7 @@
             border-collapse: collapse;
             border: none;
             font-family: monospace;
+            font-size: 14px;
         }
         
         th, td {
