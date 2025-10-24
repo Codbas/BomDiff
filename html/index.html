@@ -548,7 +548,7 @@
         let hasDescription = true;
 
         const itemStrings = ["item", "component name", "part"];
-        const qtyStrings = ["quantity", "quantity per assembly"];
+        const qtyStrings = ["quantity", "quantity per top level assembly"];
 
         const bom1ItemIndex = getIndexOfString(itemStrings, bom1[0]);
         const bom1QtyIndex = getIndexOfString(qtyStrings, bom1[0]);
@@ -575,11 +575,11 @@
         for (const [item, { qty: qty1, desc }] of bom1Map.entries()) {
             const qty2 = bom2Map.has(item) ? bom2Map.get(item).qty : 0;
             const diffQty = qty2 - qty1;
-            if (Math.abs(diffQty) > 0.0001) {
+            if (Math.abs(diffQty) >= 0.0001) {
                 if (hasDescription) {
-                    diff.push([item, diffQty, desc]);
+                    diff.push([item, Math.round(diffQty * 10000) / 10000, desc]);
                 } else {
-                    diff.push([item, diffQty]);
+                    diff.push([item, Math.round(diffQty * 10000) / 10000]);
                 }
             }
             bom2Map.delete(item);
@@ -588,9 +588,9 @@
         // Remaining items in bom2
         for (const [item, { qty, desc }] of bom2Map.entries()) {
             if (hasDescription) {
-                diff.push([item, qty, desc]);
+                diff.push([item, Math.round(qty * 10000) / 10000, desc]);
             } else {
-                diff.push([item, qty]);
+                diff.push([item, Math.round(qty * 10000) / 10000]);
             }
         }
 
