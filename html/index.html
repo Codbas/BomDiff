@@ -10,8 +10,12 @@
     "use strict";
     let file1 = null;
     let file2 = null;
+    let fileName1 = null;
+    let fileName2 = null;
     const dragCounters = new Map();
     let timeoutId = null;
+
+    const FILE_NAME_MAX_LENGTH = 23;
 
     window.addEventListener("load", ()=> {
         const dropContainers = document.getElementsByClassName("drop-container");
@@ -115,14 +119,14 @@
         const file = event.target.files[0];
 
         if (!isCSV(file.name)) {
-            displayInvalidFileError(container, file.name);
+            displayInvalidFileError(container, truncateText(file.name, FILE_NAME_MAX_LENGTH));
             clearFileContents(container);
             submitButton.classList.add("disabled");
             return;
         }
 
         setFileContents(container, file);
-        updateContainer(container, file.name);
+        updateContainer(container, truncateText(file.name, FILE_NAME_MAX_LENGTH));
 
         if (file1 !== null && file2 !== null) {
             submitButton.classList.remove("disabled");
@@ -142,14 +146,14 @@
         const file = event.dataTransfer.items[0].getAsFile();
 
         if (!isCSV(file.name)) {
-            displayInvalidFileError(container, file.name);
+            displayInvalidFileError(container, truncateText(file.name, FILE_NAME_MAX_LENGTH));
             clearFileContents(container);
             submitButton.classList.add("disabled");
             return;
         }
 
         setFileContents(container, file);
-        updateContainer(container, file.name);
+        updateContainer(container, truncateText(file.name, FILE_NAME_MAX_LENGTH));
 
         if (file1 !== null && file2 !== null) {
             submitButton.classList.remove("disabled");
@@ -233,7 +237,6 @@
     }
 
     function setCsvNames(identical) {
-        // TODO: if file name without extension is more than 12 characters, strip to 12 and add 3 periods.
         const csvNames = document.getElementById("csv-names");
 
         if (identical) {
@@ -241,8 +244,8 @@
             return;
         }
 
-        const csv1 = file1.name.slice(0, -4);
-        const csv2 = file2.name.slice(0, -4);
+        const csv1 = fileName1.slice(0, -4);
+        const csv2 = fileName2.slice(0, -4);
 
         csvNames.innerText = `${csv1}   →   ${csv2}`;
     }
@@ -255,10 +258,27 @@
 
         if (container.id === "dropContainer1") {
             file1 = file;
+            fileName1 = truncateText(file.name, FILE_NAME_MAX_LENGTH);
         }
         else {
             file2 = file;
+            fileName2 = truncateText(file.name, FILE_NAME_MAX_LENGTH);
         }
+    }
+
+    function truncateText(text, maxLength) {
+        if (text.length <= maxLength) {
+            return;
+        }
+
+        const leftSide = parseInt(maxLength / 2) - 1;
+        const rightSide = leftSide + (text.length - maxLength) + 3;
+
+        const leftString = text.substring(0, leftSide);
+        const rightString = text.substring(rightSide, text.length);
+
+        return leftString + "..." + rightString;
+
     }
 
     function updateContainer(container, fileName) {
@@ -291,11 +311,12 @@
 
     function clearFileContents(container) {
         if (container.id === "dropContainer1") {
-            file1 = null
+            file1 = null;
+            fileName1 = null;
+            return;
         }
-        else {
-            file2 = null
-        }
+            file2 = null;
+            file2 = null;
     }
 
     function isCSV(fileName) {
@@ -665,7 +686,7 @@
             height: 100%;
             margin: 0;
         } body {
-            font-family: Helvetica, Arial, serif;
+            font-family: Helvetica, Arial, monospace;
             color: var(--text-muted);
             background-color: var(--bg-dark);
         }
@@ -742,6 +763,7 @@
         }
 
         .dropped {
+            font-family: monospace;
             background:  var(--color-bg) !important;
             color: var(--color-text) !important;
             border-color: var(--color-border) !important;
@@ -763,7 +785,9 @@
             margin-top: 30px;
             user-select: none;
             transition: var(--transition-delay);
-
+        }
+        .file-text { 
+            white-space: nowrap;
         }
 
         .drop-container {
@@ -1015,7 +1039,7 @@
                     <div class="remove-file" id="removeFile1">x</div>
                     <label class="browse-label" for="file1">Browse</label>
                     <input type="file" multiple="false" accept=".csv" style="display:none;" id="file1" name="file1">
-                    <p>Drag & Drop</p>
+                    <p class="file-text">Drag & Drop</p>
                 </div>
                 </div>
                 <div class="drop-wrapper" id="drop-wrapper2">
@@ -1024,7 +1048,7 @@
                     <div class="remove-file" id="removeFile2">x</div>
                     <label class="browse-label" for="file2">Browse</label>
                     <input type="file" multiple="false" accept=".csv" style="display:none;" id="file2" name="file2">
-                    <p>Drag & Drop</p>
+                    <p class="file-text">Drag & Drop</p>
                 </div>
             </div>
         </div>
