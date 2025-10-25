@@ -13,7 +13,6 @@
     let fileName1 = null;
     let fileName2 = null;
     const dragCounters = new Map();
-    let timeoutId = null;
 
     const FILE_NAME_MAX_LENGTH = 23;
 
@@ -97,9 +96,9 @@
     }
 
     function removeFile(event) {
-        clearTimeout(timeoutId);
-
         const container = event.currentTarget.parentElement;
+        clearTimeout(container._timeoutId);
+
         const submitButton = document.getElementById("getDiffButton");
         container.classList.remove("dropped");
         container.classList.remove("error");
@@ -111,9 +110,9 @@
     }
 
     function handleFileUpload(event) {
-        clearTimeout(timeoutId);
-
         const container = event.currentTarget.parentElement;
+        clearTimeout(container._timeoutId);
+
         const submitButton = document.getElementById("getDiffButton");
 
         const file = event.target.files[0];
@@ -135,9 +134,10 @@
 
     function dropHandler(event) {
         event.preventDefault();
-        clearTimeout(timeoutId);
 
         const container = event.currentTarget;
+        clearTimeout(container._timeoutId);
+
         const submitButton = document.getElementById("getDiffButton");
         
         dragCounters.set(container, 0); 
@@ -268,7 +268,7 @@
 
     function truncateText(text, maxLength) {
         if (text.length <= maxLength) {
-            return;
+            return text;
         }
 
         const leftSide = parseInt(maxLength / 2) - 1;
@@ -282,7 +282,6 @@
     }
 
     function updateContainer(container, fileName) {
-        // TODO: truncate file names that are too long
         if (isCSV(fileName)) {
             container.classList.add("dropped");
             container.classList.remove("error");
@@ -298,9 +297,14 @@
     function displayInvalidFileError(container, fileName) {
         updateContainer(container, fileName);
 
-        timeoutId = setTimeout(() => {
+        if (container._timeoutId) {
+            clearTimeout(container._timeoutId);
+        }
+    
+        container._timeoutId = setTimeout(() => {
             container.classList.remove("error");
             container.getElementsByTagName("p")[0].innerText = "Drag & Drop";
+            container._timeoutId = null;
         }, 5000);
     }
 
@@ -368,78 +372,6 @@
 
     }
 
-    async function csvToTable(csv) {
-        const text = await csvToString(csv);
-
-        const rows = [];
-        let current = '';
-        let inQuotes = false;
-        let field = '';
-        let row = [];
-
-        for (let i = 0; i < text.length; i++) {
-            const char = text[i];
-            const nextChar = text[i + 1];
-
-        // fields are wrapped in quotes when they contain commas. Keep the commas
-        if (inQuotes) {
-            if (char === '"' && nextChar === '"') {
-                field += '"';
-                i++;
-            } else if (char === '"') {
-                inQuotes = false;
-            } else {
-                field += char;
-            }
-        } else {
-            if (char === '"') {
-                inQuotes = true;
-                } else if (char === ',') {
-                    row.push(field);
-                    field = '';
-                } else if (char === '\n' || char === '\r') {
-                    if (field || row.length > 0) {
-                        row.push(field);
-                        field = '';
-                        rows.push(row);
-                        row = [];
-                    }
-                    if (char === '\r' && nextChar === '\n') i++;
-                } else {
-                    field += char;
-                }
-            }
-        }
-
-        if (field || row.length > 0) {
-            row.push(field);
-            rows.push(row);
-        }
-
-        if (rows.length === 0) return '';
-
-        const headers = rows[0];
-        const dataRows = rows.slice(1);
-
-        let table = '<table><thead><tr>';
-        headers.forEach(header => {
-            table += `<th>${header}</th>`;
-        });
-        table += '</tr></thead><tbody>';
-
-        dataRows.forEach(row => {
-            table += '<tr>';
-            row.forEach(cell => {
-                table += `<td>${cell}</td>`;
-            });
-            table += '</tr>';
-        });
-
-        table += '</tbody></table>';
-
-        return table;
-    }
-
     async function csvToArray(csv) {
         const text = await csvToString(csv);
 
@@ -488,24 +420,6 @@
         }
 
         return rows;
-    }
-
-    function JSONToTable(json) {
-        let headers = Object.keys(jsonData[0]);
-        let table = "<table><thead><tr>";
-
-        headers.forEach(header => table += `<th>${header}</th>`);
-        table += `</tr></thead><tbody>`;
-
-        json.forEach(row => {
-            table += "<tr>";
-            headers.forEach(header => table += `<td>${row[header]}</td>`);
-            table += "<tr>";
-        });
-
-        table += "</tbody></table>";
-
-        return table;
     }
 
     function getIndexOfString(stringArr, arr) {
