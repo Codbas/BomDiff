@@ -12,6 +12,8 @@
     let file2 = null;
     let fileName1 = null;
     let fileName2 = null;
+    let tableEmpty = true;
+    let csvDiff = [[]];
     const dragCounters = new Map();
 
     const FILE_NAME_MAX_LENGTH = 23;
@@ -23,6 +25,8 @@
         const submitButton = document.getElementById("getDiffButton");
         const logo = document.getElementById("logo");
         const themeSwitch = document.getElementById("theme-switch-wrapper");
+        const csvDownloadbutton = document.getElementById("csv-download-button");
+        const copyTableButton = document.getElementById("copy-table-button");
 
         for (let elem of removeFileButtons) {
             elem.addEventListener("click", removeFile);
@@ -42,6 +46,8 @@
         submitButton.addEventListener("click", compareBoms);
         logo.addEventListener("click", () => { location.reload() });
         themeSwitch.addEventListener("click", toggleTheme);
+        csvDownloadbutton.addEventListener("click", downloadCSV);
+        copyTableButton.addEventListener("click", copyTableToClipboard);
 
         document.body.addEventListener("dragover", handleDragOver);
         document.body.addEventListener("drop", (event) => {
@@ -67,32 +73,38 @@
 
         const tableWrapper = document.getElementById("table-wrapper");
         const diffCard = document.getElementById("diff-card");
+        const diffButtonsContainer = document.getElementById("diff-buttons-container");
 
-        tableWrapper.innerHTML = "";
-        tableWrapper.classList.remove("empty");
-        diffCard.classList.remove("empty");
+        //tableWrapper.classList.remove("empty");
+        //diffCard.classList.remove("empty");
 
         const bom1 = await csvToArray(file1);
         const bom2 = await csvToArray(file2);
 
-        const diff = getBomDiff(bom1, bom2);
-
-        if (diff.length === 1) {
-            if (diff[0][0] === "Item") {
+        csvDiff = getBomDiff(bom1, bom2);
+        if (csvDiff.length === 1) {
+            if (csvDiff[0][0] === "Item") {
                 tableWrapper.innerHTML = "BOMs are identical";
+                diffButtonsContainer.classList.add("empty");
                 setCsvNames(true);
                 return;
             }
 
-            tableWrapper.innerHTML = diff[0][0];
+            tableWrapper.innerHTML = csvDiff[0][0]; // does this ever happen?
+            console.log("INFO: it happened - line 98");
             return;
         }
 
-        const table = arrayToTable(diff);
+        tableWrapper.innerHTML = "";
+        diffButtonsContainer.classList.remove("empty");
+
+        const table = arrayToTable(csvDiff);
 
         tableWrapper.innerHTML = table;
         addColorClassToNumberCells(tableWrapper);
         setCsvNames(false);
+        tableWrapper.classList.remove("empty");
+        diffCard.classList.remove("empty");
     }
 
     function removeFile(event) {
@@ -190,6 +202,126 @@
         event.preventDefault(); 
     }
 
+    function downloadCSV(event) {
+        if(csvDiff.length <= 1) {
+            console.log("ERROR: Diff table is empty")
+            return;
+        }
+
+        const copyIcon = document.getElementById("copy-icon");
+        const csvDownloadbutton = document.getElementById("csv-download-button");
+        const downloadCsvCheckmark = document.getElementById("download-csv-checkmark");
+        const arrow = document.getElementById("arrow");
+        const csvText = document.getElementById("csv-text");
+
+        const csvContent = csvDiff.map(row =>
+            row.map(value => 
+                typeof value === "string" && value.includes(",")
+                ? `"${value.replace(/"/g, '""')}"` 
+                : value
+            ).join(",")
+            ).join("\n");
+
+            const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+
+            const link = document.createElement("a");
+            link.href = URL.createObjectURL(blob);
+            link.download = "diff.csv";
+
+            link.click();
+            URL.revokeObjectURL(link.href);
+
+            if (!downloadCsvCheckmark._timeoutId) {
+                arrow.classList.remove("empty");
+                csvText.classList.remove("empty");
+                downloadCsvCheckmark.classList.add("empty");
+            }
+
+            arrow.classList.add("empty");
+            csvText.classList.add("empty");
+            downloadCsvCheckmark.classList.remove("empty");
+
+            downloadCsvCheckmark.animate(
+                [
+                    { fontSize: "35px", transform: "translateY(-10px)" }, 
+                    { fontSize: "20px", transform: "translateY(0px)" } 
+                ],
+                {
+                    duration: 200,
+                    easing: "ease-out",
+                    fill: "forwards"
+                }
+        );
+
+        if (downloadCsvCheckmark._timeoutId) {
+            clearTimeout(downloadCsvCheckmark._timeoutId);
+        }
+
+        downloadCsvCheckmark._timeoutId = setTimeout(() => {
+            downloadCsvCheckmark.classList.add("empty");
+            arrow.classList.remove("empty");
+            csvText.classList.remove("empty");
+            downloadCsvCheckmark._timeoutId = null;
+        }, 2000);
+    }
+
+    async function copyTableToClipboard(event) {
+        if(csvDiff.length <= 1) {
+            console.log("ERROR: Diff table is empty")
+            return;
+        }
+
+        const copyIcon = document.getElementById("copy-icon");
+        const copyTableButton = document.getElementById("copy-table-button");
+        const copyCheckmark = document.getElementById("copy-checkmark");
+
+        let copied = false;
+
+        const tableText = csvDiff.map(row => row.join('\t')).join('\n');
+
+        if (!copyCheckmark._timeoutId) {
+            copyIcon.classList.remove("empty");
+            copyCheckmark.classList.add("empty");
+        }
+
+        try {
+            await navigator.clipboard.writeText(tableText)
+                copied = true;
+            } catch (error) {
+                console.error('ERROR: unable to copy table to clipboard\n', err);
+            } finally {
+            if (copied) {
+                copyIcon.classList.add("empty");
+                copyCheckmark.classList.remove("empty");
+
+                copyTableButton.animate(
+                    [
+                        { fontSize: "35px" }, 
+                        { fontSize: "20px" } 
+                    ],
+                    {
+                        duration: 200,
+                        easing: "ease-out",
+                        fill: "forwards"
+                    }
+                );
+
+                if (copyCheckmark._timeoutId) {
+                    clearTimeout(copyCheckmark._timeoutId);
+                }
+        
+                copyCheckmark._timeoutId = setTimeout(() => {
+                    copyCheckmark.classList.add("empty");
+                    copyIcon.classList.remove("empty");
+                    copyCheckmark._timeoutId = null;
+                }, 2000);
+
+            }
+            else {
+                console.log("ERROR: unable to copy diff table to clipboard");
+            }
+        }
+    }
 
 
     /********************************************************************
@@ -217,13 +349,18 @@
 
     function setToggleThemeIconColor(darkTheme) {
         const themeSwitch = document.getElementById("theme-switch");
+        const copyIcon = document.getElementById("copy-icon");
+        const arrow = document.getElementById("arrow");
 
         if (darkTheme) {
             themeSwitch.style.filter = "invert(100%)";
+            copyIcon.style.filter = "brightness(4.5)";
+            arrow.style.filter = "invert(1) brightness(0.7)";
         }
         else {
             themeSwitch.style.filter = "invert(0%)";
-
+            copyIcon.style.filter = "brightness(1)";
+            arrow.style.filter = "invert(0) brightness(0.7)";
         }
     }
 
@@ -498,7 +635,7 @@
         }
 
         if (bom1DescIndex === -1 || bom2DescIndex === -1) {
-            console.log("No Description column found.");
+            console.log("INFO: Description column not found");
             hasDescription = false;
             diff[0].splice(2, 1);
         }
@@ -815,19 +952,102 @@
         }
 
         .empty {
-            display: none;
+            display: none !important;
         }
         .populated {
             display: unset;
         }
 /************ End Get Diff Button     ****************/
 
+        #diff-wrapper {
+            margin-top: 50px;
+            width: fit-content;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+/************   Table Copy & CSV Download buttons     ****************/
+        #diff-buttons-container {
+            display: flex;
+            margin-left: auto;
+            margin-right: 0;
+            width: fit-content;
+            height: 25px;
+            user-select: none;
+        }
+
+        #arrow {
+            width: 8px;
+            height: 9px;
+            margin-left: auto;
+            margin-right: auto;
+            margin-top: 3px;
+            margin-bottom: 3px;
+        }
+        #csv-text {
+            font-size: 8px;
+            font-family: Helvetica, Arial;
+            font-weight: bold;
+        }
+
+        #csv-download-button {
+            display: flex;
+            flex-direction: column;
+            transition: var(--transition-delay);
+
+            text-align: center;
+            user-select: none;
+            width: 25px;
+            height: 25px;
+            background: var(--bg-light);
+            color: var(--text-muted);
+            border: 1px solid var(--border);
+            border-radius: var(--border-radius);
+        }
+        #csv-download-button:hover, #copy-table-button:hover {
+            cursor: pointer;
+            background: var(--bg-lightest);
+            border-color: var(--bg-lightest);
+        }
+        #csv-download-button:active, #copy-table-button:active {
+            background: var(--bg-light);
+        }
+
+        #copy-icon {
+            width: 16px;
+            height: 16px;
+            filter: brightness(4.5);
+        }
+        #copy-checkmark, #download-csv-checkmark {
+            color: rgb(0, 160, 0);
+        }
+        #download-csv-checkmark {
+            position: absolute;
+            align-self: center;
+        }
+
+        #copy-table-button {
+            margin-left: 10px;
+            background: var(--bg-light);
+            color: var(--text);
+            border: 1px solid var(--border);
+            border-radius: var(--border-radius);
+            transition: var(--transition-delay);
+            width: 25px;
+            height: 25px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            border-radius: var(--border-radius);
+        }
+/************   END Table Copy & CSV Download buttons     ****************/
+
 
 /************       Diff Card        ****************/
         #diff-card {
             display: block;
             align-self: center;
-            margin: 50px auto 0 auto;
+            margin: 10px auto 0 auto;
             padding: 10px 25px 25px 25px;
             margin-bottom: 25px;
             width: fit-content;
@@ -967,9 +1187,15 @@
             </div>
         </div>
         <div id="getDiffButton" class="disabled">Get Diff</div>
-        <div id="diff-card" class="empty">
-            <div id="csv-names"></div>
-            <div id="table-wrapper" class="empty"></div>
+            <div id="diff-wrapper">
+            <div id="diff-buttons-container" class="empty">
+                <div id="csv-download-button"><div id="download-csv-checkmark" class="empty">✔</div><img id="arrow" draggable="false" src="data:image/webp;base64, UklGRrAAAABXRUJQVlA4WAoAAAAQAAAADwAADwAAQUxQSHIAAAABcFNr29O8lNQ1GEACCpi6gRQPOEhxkBEXxAQOUua+cpj73/8pAiJiAiCeCSHkuoL6r/hpkkQX4bmOk9TPqrZpemFsmrbKJvuWaLb7CZb5qBrzJQCnUBUORLeUlS7k3kN4eFAHP0J+AXR3db2DtnU6WTJWUDggGAAAADABAJ0BKhAAEAACADQlpAADcAD++/1QAA=="></img><span id="csv-text">CSV</span></div>
+                <div id="copy-table-button"><div id="copy-checkmark" class="empty">✔</div><img id="copy-icon" draggable="false" src="data:image/webp;base64, UklGRuwBAABXRUJQVlA4WAoAAAAQAAAAFwAAFwAAQUxQSCYBAAABkLNtm2nXC/q+yY7NyrZtp3VSJq3tVh1X0por/0AHlbtUxzY7r28mnJkdERMAAIC1p1yciTMhxJkQ4k0HgjT916fNVc21R9Qmi68LcWBSvO757gFeCxpdVk5FIgDg4RsGADEfyCLLIouIvueiCg/+Nni4Sz2env3IRdWL2wzk7LE4+5GLMvbmEBV4ws/Ej2ymg9cBM95xIU4dVKxo1zRNc9EJneOT9iwPjTki4vQ3DADQIE8N16KSkpKSeLQLAdV2sJS5eWUF0zOIy+nQDr/mVmWIHgKqAbVY2Mi4fCydGeR1+wXKVoiIEyeyjpnB2/6aiuDeAXl/MjMEfx8NEgRAOQAafDIQAAAfvvNEXdudnzaQtvNHa6uaD2gWZdj5Rpxpfp22wXVWUDggoAAAAJAEAJ0BKhgAGAA+kUKcSiWjoqGoCACwEglpAAAudkuSAlYPoKwfUa+apssagAD++E63N/34JWEaxIiAhE46lHxhL8OhWerJG1iHO3NUFNPVOUOufst6HKDYndyxfk/h+3+xTqpuePwhjE9FIH9KH84znhh84IE7XdTWdBUuxoQgSzN6/d7MxmTZrbv3hljaoS2bv/j5tlrPuQdEv8YAAAA="></div>
+            </div>
+            <div id="diff-card" class="empty">
+                <div id="csv-names"></div>
+                <div id="table-wrapper" class="empty"></div>
+            </div>
         </div>
     </div>
 </body>
