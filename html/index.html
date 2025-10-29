@@ -75,9 +75,6 @@
         const diffCard = document.getElementById("diff-card");
         const diffButtonsContainer = document.getElementById("diff-buttons-container");
 
-        //tableWrapper.classList.remove("empty");
-        //diffCard.classList.remove("empty");
-
         const bom1 = await csvToArray(file1);
         const bom2 = await csvToArray(file2);
 
@@ -87,6 +84,8 @@
                 tableWrapper.innerHTML = "BOMs are identical";
                 diffButtonsContainer.classList.add("empty");
                 setCsvNames(true);
+                tableWrapper.classList.remove("empty");
+                diffCard.classList.remove("empty");
                 return;
             }
 
